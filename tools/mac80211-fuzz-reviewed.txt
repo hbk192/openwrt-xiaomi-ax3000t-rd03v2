@@ -14,3 +14,13 @@
 6b69400f43ccc59ff939f9ea225704357ca77e94da5299f2e7100c0f4c51c716 nss/ath11k/068-ath11k-add-rx-histogram-stats.patch
 afe6b17365a27974c39ad0cdd1e2d01bf437d724de1f7e481301bb1c2edd7366 nss/ath11k/207-ath11k-Enable-256_512MB-profiles.patch
 178195ae91b4ad539f87fa96fc17798526bd3e431470c4819da9bdc4dc1fc8ac nss/ath11k/999-233-ath11k-Disable-rx_header-tlv-for-2K-SKB.patch
+#
+# ipq50xx-2026.10.28: his 999-972 (peer error paths) is the same patch as in 10.19 - same
+# added and removed lines, only hunk line numbers and one context line moved - but the new
+# series reworks nss.h, and the hunk's last context line ("struct ath11k_nss_mpath_entry {")
+# no longer exists in it. OpenWrt applies with fuzz 2, so his CI gets the same landing;
+# reviewed the same way: the hunk applies at offset -8 with fuzz 1, dropping that trailing
+# context line, and bool create_failed still lands inside struct ath11k_nss_peer right after
+# struct completion complete, which is what peer.c's peer->nss.create_failed uses. The other
+# files (nss.c, peer.c, peer.h) apply strictly.
+aa29d8070f257224bb195cdce20d0288fb258fad08eb8bb5b31d9adc308bcefe nss-extra/ath11k/999-972-ath11k-nss-fix-the-peer-error-paths.patch
