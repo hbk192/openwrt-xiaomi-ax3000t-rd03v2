@@ -1,0 +1,51 @@
+#!/bin/sh
+# 99-rd03v2-firstboot: the device defaults this firmware ships at first boot.
+#
+# uci-defaults scripts are sourced by /etc/init.d/boot (START=10) on the first boot after a
+# flash or a factory reset and are deleted once they return 0 (see uci_apply_defaults() in
+# /etc/init.d/boot). They run before network (START=20) and before ath11k exists - on the
+# NSS path the radios probe about 30-40 s into the boot - so this script only writes uci
+# configuration: netifd and /etc/hotplug.d/ieee80211/10-wifi-detect apply it when the phys
+# appear. Never fetch anything here.
+#
+# Ordering: the 99- prefix puts it after 01-rd03v2-wireless (which writes the stock
+# radio/AP sections when the config has none) and after 99-nss-topology (which creates the
+# nss.general section), so both files exist by the time it runs.
+#
+# Applied once per device, not once per flash: the marker lives in /etc/config/rd03v2, which
+# a sysupgrade keeps, so reflashing with the settings kept does not undo later LuCI edits.
+# To re-arm on a live system:
+#   uci delete rd03v2.firstboot; uci commit rd03v2
+# and put this file back into /etc/uci-defaults/.
+[ "$(uci -q get rd03v2.firstboot.applied)" = 1 ] && exit 0
+
+log() { logger -t rd03v2-firstboot "$*"; }
+
+# 1. Keep the NSS Wi-Fi offload while a station (travelmate client) interface is configured.
+#    /lib/nss/functions.sh nss_dwmac_wifi_offload() otherwise puts Wi-Fi on the host path as
+#    soon as a station interface exists: under NSS Wi-Fi offload an IPQ5018/QCN6122 station
+#    cannot send frames larger than ~860 B, so TCP uploads stall (#48). This option overrides
+#    that and keeps the offload; ath11k loads once per boot, so it takes effect at the next
+#    boot, which is fine here - the script runs before /etc/init.d/nss (START=19).
+uci -q set nss.general.wifi_offload_sta='1'
+uci -q commit nss
+
+# 2. Both APs up by default, WPA2/PSK, one SSID and key.
+#    'psk2' is WPA2-PSK with CCMP/AES; a passphrase is 8..63 characters.
+ap_defaults() {
+	uci -q show "wireless.$1" >/dev/null || return 0	# section absent: 01-rd03v2-wireless will write it
+	uci -q set "wireless.$1.disabled=0"
+	uci -q set "wireless.$1.ssid=MiNet_OpWrt"
+	uci -q set "wireless.$1.encryption=psk2"
+	uci -q set "wireless.$1.key=Passwd.123"
+}
+ap_defaults default_radio0
+ap_defaults default_radio1
+uci -q commit wireless
+
+uci -q set rd03v2.firstboot='firstboot'
+uci -q set rd03v2.firstboot.applied='1'
+uci -q commit rd03v2
+
+log "applied: nss.general.wifi_offload_sta=1; APs enabled with SSID MiNet_OpWrt"
+exit 0
