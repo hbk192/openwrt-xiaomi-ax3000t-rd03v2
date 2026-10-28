@@ -51,7 +51,16 @@ checks = [
     ('monitor status buffer uses bytes', bool(re.search(r'HAL_RXDMA_MONITOR_STATUS,\s+DP_RX_BUFFER_SIZE,', tx))),
     ('host buffer remains 2048 bytes', bool(re.search(r'#define\s+DP_RX_BUFFER_SIZE\s+2048\b', header))),
     ('compact NSS buffer remains 1816 bytes', bool(re.search(r'#define\s+ATH11K_DP_RXDMA_NSS_REFILL_RING_SIZE\s+1816\b', profiles))),
-    ('low-memory ring remains 512 entries', bool(re.search(r'#define\s+ATH11K_DP_RXDMA_REFILL_RING_SIZE\s+512\b', profiles))),
+    # c36db6321c: ATH11K_DP_RXDMA_REFILL_RING_SIZE is the rx_buf_size handed to the firmware,
+    # not a ring size, so it stays 2048 in every profile. The RX buffer ring itself is
+    # DP_RXDMA_BUF_RING_SIZE (512 in the 256M profile) and QCN6122 gets 1024 entries from
+    # 999-9901. Before 10.28 the 256M profile wrongly had 512 as the buffer length.
+    ('RX buffer length stays 2048 in every profile', bool(re.search(
+        r'#define\s+ATH11K_DP_RXDMA_REFILL_RING_SIZE\s+2048\b', profiles))),
+    ('low-memory RXDMA buffer ring remains 512 entries', bool(re.search(
+        r'#define\s+DP_RXDMA_BUF_RING_SIZE\s+512\b', profiles))),
+    ('QCN6122 uses the 1024-entry RXDMA buffer ring', bool(re.search(
+        r'#define\s+DP_RXDMA_BUF_RING_SIZE_QCN6122\s+1024\b', profiles))),
     # his NSS set (999-233) rebuilds the 802.11 header from the RX descriptor through these ops
     # and calls them unguarded; a NULL one in ipq5018_ops oopses on the first EAPOL frame in
     # host Wi-Fi mode (987, rd03v2 #47)
