@@ -26,3 +26,31 @@ ethtool
 !kmod-amneziawg
 !amneziawg-tools
 !luci-proto-amneziawg
+# DEV-pkgs custom set: zh-CN UI, daily tools, Argon, zram (config/rd03v2.config, kmods.config).
+# The translations are Hidden kconfig symbols fed by CONFIG_LUCI_LANG_zh_Hans=y; asserting the
+# packages here is what catches them being dropped silently.
+luci-theme-argon
+luci-i18n-base-zh-cn
+luci-i18n-firewall-zh-cn
+luci-i18n-package-manager-zh-cn
+luci-i18n-ttyd-zh-cn
+luci-i18n-statistics-zh-cn
+luci-i18n-travelmate-zh-cn
+luci-i18n-filemanager-zh-cn
+luci-i18n-argon-config-zh-cn
+luci-app-ttyd
+luci-app-statistics
+luci-app-travelmate
+luci-app-filemanager
+luci-compat
+curl
+bash
+unzip
+openssh-sftp-server
+kmod-zram
+zram-swap
+# no proxy core in this build (user decision, 2026-10-28); keep the image clean
+!xray-core
+!nikki
+!mihomo
+!openclash
