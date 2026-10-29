@@ -1,0 +1,42 @@
+uloop: install the SIGCHLD wake handler with SA_RESTART
+
+uloop installs its wake-up signal handlers with sa_flags = 0.  SIGCHLD is not
+a cancellation request: it is the bookkeeping signal the uloop_process
+watchers use to learn that a child exited.  Without SA_RESTART a child that
+exits while a daemon handler is blocked in read(2) makes that read fail with
+EINTR.
+
+rpcd runs the LuCI RPC handlers (ucode, via rpcd-mod-ucode) in that same main
+loop, and luci.getProcessList() blocks in getline() on the stdout pipe of
+`/bin/busybox top -bn1`, which is a child of rpcd itself.  Busybox top spends
+its first ~100 ms sampling without printing (the batch loop drops the first
+iteration to get a CPU baseline), so that first read is blocked exactly when
+top flushes its output and exits; when the SIGCHLD wins the wake-up race,
+getline() returns EINTR, ucode's stdio keeps the sticky error flag, the read
+returns null and luci-base's process_list() returns an empty list.  LuCI then
+renders "no information available" on Status -> Processes (seen on the RD03v2
+DEV-pkgs-1028 image; luci-lib-jsonc is installed in it and unrelated).
+
+SIGINT and SIGTERM keep sa_flags = 0: those do ask the process to stop, so
+letting them interrupt a blocking call is the intent.
+
+--- a/uloop.c
++++ b/uloop.c
+@@ -546,7 +546,7 @@
+ 		if (s.sa_handler == SIG_DFL) { /* Do not override existing custom signal handlers */
+ 			memcpy(old, &s, sizeof(struct sigaction));
+ 			s.sa_handler = handler;
+-			s.sa_flags = 0;
++			s.sa_flags = (signum == SIGCHLD) ? SA_RESTART : 0;
+ 			act = &s;
+ 		}
+ 	}
+@@ -616,7 +616,7 @@
+ 
+ 	if (s->orig.sa_handler != uloop_signal_wake) {
+ 		sa.sa_handler = uloop_signal_wake;
+-		sa.sa_flags = 0;
++		sa.sa_flags = (s->signo == SIGCHLD) ? SA_RESTART : 0;
+ 		sigemptyset(&sa.sa_mask);
+ 		sigaction(s->signo, &sa, NULL);
+ 	}
