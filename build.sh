@@ -7,14 +7,18 @@
 #      + feeds pinned to commits     (feeds.lock)
 #      + his CI config fragments plus ours (config/), signed with our own key.
 #
-# The image lists our package repository (kernel modules and our extras) plus OpenWrt's
-# official snapshot userspace feeds, like his CI does; the official target/kmods feeds are
-# left out because their kernel is not ours.
+# The image lists OpenWrt's official snapshot userspace feeds, like his CI does (the official
+# target/kmods feeds are left out because their kernel is not ours). It lists a package
+# repository of ours only when V2_REPO_URL names a published one: most builds are not
+# published, and a listed URL that answers 404 makes every `apk update` report an unavailable
+# feed (the DEV-pkgs-1028 image listed the upstream author's repository, which has no DEV
+# directory).
 #
 # Usage: TAG=<release or DEV-name> [JOBS=n] [PREPARE_ONLY=1] [TREE=dir] ./build.sh
 #   V2_KEY_DIR    signing key dir (private-key.pem 0600 + public-key.pem)
 #   V2_DL         persistent download cache
-#   V2_REPO_URL   package repository URL baked into the image
+#   V2_REPO_URL   published URL of this build's packages.adb; lists it first in distfeeds.list
+#                 (unset: the image lists only the snapshot feeds)
 set -euo pipefail
 cd "$(dirname "$0")"
 REPO=$PWD V2=$PWD
@@ -28,7 +32,7 @@ export TMPDIR=${TMPDIR:-$WS/v2-tmp}
 mkdir -p "$TMPDIR"
 KEYDIR=${V2_KEY_DIR:-$WS/keys/v2}
 DLDIR=${V2_DL:-$WS/dl-v2}
-REPO_URL=${V2_REPO_URL:-https://adcds.github.io/openwrt-xiaomi-ax3000t-rd03v2/v2/$TAG/packages.adb}
+REPO_URL=${V2_REPO_URL:-}
 NSS_MIRROR=${V2_NSS_MIRROR:-$WS/mirrors/nss-packages.git}
 die() { echo "build.sh: $*" >&2; exit 1; }
 lines() { grep -vE '^\s*(#|$)' "$1" || true; }  # a list file without comments; empty is fine
@@ -135,7 +139,7 @@ awg_pin kmod-amneziawg  3.1.20260906 4569c4c67f3a57414969260cafbbd04694fbaae0 \
 awg_pin amneziawg-tools 3.1.20260812 ee0f0a9aa34ff0a0da4b3433b9512781cfe02843 \
 	0c27841a3b4860c7fd085cd627c5b0f9c25653afdaef1e73fd3e350fb3445dab
 
-# 5. package repositories baked into the image, and a release stamp
+# 5. package repository list (empty unless V2_REPO_URL is set) and a release stamp
 "$V2/tools/stamp-release-v2.sh" "$TREE" "$TAG" "$REPO_URL"
 
 # 6. our signing key (package/Makefile only generates one when the file is missing)

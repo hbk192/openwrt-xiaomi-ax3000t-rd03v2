@@ -86,12 +86,13 @@ if [ -f "$X/etc/rd03v2-release" ] && [ -f "$X/lib/apk/db/installed" ]; then
 	chk "release stamp: base" "${RD03V2_BASE:-}" "kuncy7/openwrt-nss-edma $RELEASE $COMMIT"
 	D=$X/etc/apk/repositories.d/distfeeds.list
 	{
-		echo "${RD03V2_REPO:-<no repo in the stamp>}"
+		# only a build made with V2_REPO_URL lists a repository of ours, and it lists it first
+		[ -z "${RD03V2_REPO:-}" ] || echo "$RD03V2_REPO"
 		for f in base luci packages routing telephony video; do
 			echo "https://downloads.openwrt.org/snapshots/packages/aarch64_cortex-a53/$f/packages.adb"
 		done
 	} > "$W/distfeeds"
-	chk "distfeeds: our repo, then the snapshot userspace feeds" "$(yes_ cmp "$W/distfeeds" "$D")" yes
+	chk "distfeeds: our repo (only when stamped), then the snapshot userspace feeds" "$(yes_ cmp "$W/distfeeds" "$D")" yes
 	n=0; for k in "$X"/etc/apk/keys/*; do cmp -s "$k" "$V2/keys/public-key.pem" && n=$((n + 1)); done
 	chk "our key in /etc/apk/keys" "$n" 1
 	chk "no AmneziaWG files in the image" "$(find "$X" -iname '*amnezia*' | wc -l)" 0

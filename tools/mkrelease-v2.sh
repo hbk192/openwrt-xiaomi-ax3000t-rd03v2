@@ -11,7 +11,7 @@ while [ $# -gt 0 ]; do
  *) break ;;
  esac
 done
-[ $# = 1 ] || { echo "usage: $0 [--local --expect-repo-url URL --out DIR] <tree>" >&2; exit 2; }
+[ $# = 1 ] || { echo "usage: $0 [--local [--expect-repo-url URL] --out DIR] <tree>" >&2; exit 2; }
 TREE=$(cd "$1" && pwd)
 REPO=$(cd "$(dirname "$0")/.." && pwd); V2=$REPO
 T=$TREE/bin/targets/qualcommax/ipq50xx
@@ -39,14 +39,17 @@ for line in open(sys.argv[1]):
 PY
 )"
 TAG=${RD03V2_TAG:?missing tag}
+REPO_URL_IN_IMAGE=${RD03V2_REPO:-}
 case "$TAG" in *[!A-Za-z0-9._-]*|'') die 'unsafe tag';; esac
 if [ "$LOCAL" = 1 ]; then
- [ -n "$EXPECT_URL" ] || die '--local needs --expect-repo-url'
+ # --expect-repo-url given: the image must list exactly that repository; omitted: it must
+ # list none (build.sh only lists one when V2_REPO_URL is set)
+ [ "$REPO_URL_IN_IMAGE" = "$EXPECT_URL" ] || die 'image repository differs from expected URL'
 else
  case "$TAG" in DEV-*) die 'development image';; esac
- EXPECT_URL="https://adcds.github.io/openwrt-xiaomi-ax3000t-rd03v2/v2/$TAG/packages.adb"
+ [ -n "$REPO_URL_IN_IMAGE" ] || die 'a release image must name its package repository (build with V2_REPO_URL)'
+ [ -z "$EXPECT_URL" ] || [ "$REPO_URL_IN_IMAGE" = "$EXPECT_URL" ] || die 'image repository differs from expected URL'
 fi
-[ "$RD03V2_REPO" = "$EXPECT_URL" ] || die 'image repository differs from expected URL'
 for f in "$P-squashfs-sysupgrade.bin" "$P-initramfs-factory.ubi" "$P-initramfs-uImage.itb" "$P-initramfs-factory-wifi.ubi" "$P-initramfs-uImage-wifi.itb" config.buildinfo feeds.buildinfo version.buildinfo; do
  [ -f "$T/$f" ] || die "missing $f"
 done

@@ -33,8 +33,7 @@ done
 # TAG (and V2_REPO_URL) given: build this tree as another release, stamped the way build.sh
 # stamps a new one. Without TAG the tree keeps the stamp it was prepared with.
 if [ -n "${TAG:-}" ]; then
-	"$V2/tools/stamp-release-v2.sh" "$TREE" "$TAG" \
-		"${V2_REPO_URL:-https://adcds.github.io/openwrt-xiaomi-ax3000t-rd03v2/v2/$TAG/packages.adb}"
+	"$V2/tools/stamp-release-v2.sh" "$TREE" "$TAG" "${V2_REPO_URL:-}"
 fi
 # 8. build
 if [ -L "$TREE/dl" ]; then

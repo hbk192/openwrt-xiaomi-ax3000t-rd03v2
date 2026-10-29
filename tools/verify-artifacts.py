@@ -152,7 +152,8 @@ def verify_release(directory, apk, keys):
         recorded = '\n'.join(f'{n} - {v}' for n, v in sorted(installed.items())) + '\n'
         require((directory / (PREFIX + '.manifest')).read_text() == recorded,
                 'release manifest is the actual image package set')
-        distfeeds = [identity['RD03V2_REPO']] + [
+        repo_url = identity.get('RD03V2_REPO')
+        distfeeds = ([repo_url] if repo_url else []) + [
             f'https://downloads.openwrt.org/snapshots/packages/aarch64_cortex-a53/{feed}/packages.adb'
             for feed in ('base', 'luci', 'packages', 'routing', 'telephony', 'video')]
         require((root / 'etc/apk/repositories.d/distfeeds.list').read_text().splitlines()
@@ -278,7 +279,8 @@ def verify_served(directory, base_url, apk, keys):
                     'local served artifact: ' + name)
     with tempfile.TemporaryDirectory(prefix='v2-served-') as temporary:
         packages = Path(temporary)
-        repo_url = identity['RD03V2_REPO']
+        repo_url = identity.get('RD03V2_REPO')
+        require(bool(repo_url), 'release stamp names the served package repository')
         require(urllib.parse.urlparse(repo_url).netloc == urllib.parse.urlparse(base_url).netloc,
                 'repository and artifacts use the expected local server')
         with urllib.request.urlopen(repo_url, timeout=30) as response:
@@ -322,8 +324,13 @@ def verify_device(directory, ssh_command, apk, keys):
     for name in pins:
         require(f'{name}={installed[name]}' in world, 'installed pin: ' + name)
         require(actual_installed.get(name) == installed[name], 'installed pinned version: ' + name)
-    require(run(prefix + ['head -1 /etc/apk/repositories.d/distfeeds.list']).decode().strip()
-            == identity['RD03V2_REPO'], 'installed package repository')
+    first_repo = run(prefix + ['head -1 /etc/apk/repositories.d/distfeeds.list']).decode().strip()
+    stamped_repo = identity.get('RD03V2_REPO')
+    if stamped_repo:
+        require(first_repo == stamped_repo, 'installed package repository')
+    else:
+        require(first_repo.startswith('https://downloads.openwrt.org/'),
+                'installed package repository (snapshot feed first, no repository of ours)')
     hashes = run(prefix + ['sha256sum /etc/apk/keys/*']).decode()
     require(sha(keys / 'public-key.pem') in hashes, 'installed trusted key')
     require(run(prefix + ['test ! -e /dev/mem && echo absent']).decode().strip() == 'absent',

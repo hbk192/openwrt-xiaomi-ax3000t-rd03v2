@@ -1,10 +1,12 @@
 # Packages
 
-The image lists our repository first, then OpenWrt's snapshot feeds `base`, `luci`,
-`packages`, `routing`, `telephony` and `video`. The official kmods feed is left out, because
-its kernel is not ours. Kernel modules come from our repository, which is built with the
-image and signed with our key. A kmod installs only on the image of the same build, since
-it depends on `kernel=<version>~<vermagic>` exactly.
+The image lists OpenWrt's snapshot feeds `base`, `luci`, `packages`, `routing`, `telephony`
+and `video`; the official kmods feed is left out, because its kernel is not ours. A published
+build (`V2_REPO_URL` set to that release's `packages.adb`) also lists our repository first:
+it carries our kernel modules, built with the image and signed with our key. A build whose
+repository is not published lists no repository of ours, so `apk update` does not report one
+as unavailable. A kmod installs only on the image of the same build, since it depends on
+`kernel=<version>~<vermagic>` exactly.
 
 Userspace comes from OpenWrt's snapshot feeds and drifts with them. That is the point: it
 is maintained there. The exception is the packages kuncy7's tree changes without a version

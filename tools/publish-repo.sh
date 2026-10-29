@@ -1,8 +1,8 @@
 #!/bin/bash
 # publish-repo.sh <tree> [pages worktree]: stage a release's package repository for GitHub
 # Pages, at v2/<tag>/ of the gh-pages branch, which is the URL the image lists first in
-# /etc/apk/repositories.d/distfeeds.list. Commits locally and stops: pushing gh-pages is what
-# publishes, and needs an explicit OK.
+# /etc/apk/repositories.d/distfeeds.list when it was built with V2_REPO_URL set to it.
+# Commits locally and stops: pushing gh-pages is what publishes, and needs an explicit OK.
 #
 # The repository holds what a v2 image installs from us: the kernel modules (they install only
 # on the image of the same build), our extras (AmneziaWG, luci-app-nss) and the exact versions
@@ -29,6 +29,7 @@ unsquashfs -q -d "$X/r" "$X/root.sqfs" etc/rd03v2-release >/dev/null 2>&1 || :
 [ -f "$X/r/etc/rd03v2-release" ] || die "no /etc/rd03v2-release in the sysupgrade image"
 . "$X/r/etc/rd03v2-release"
 TAG=$RD03V2_TAG
+[ -n "${RD03V2_REPO:-}" ] || die 'the image lists no repository; build it with V2_REPO_URL=<published URL>'
 case "$TAG" in '') die 'empty release tag';; DEV-*) [ -n "$LOCAL_DIR" ] || die "development build ($TAG)";; esac
 "$TREE/staging_dir/host/bin/apk" verify --keys-dir "$V2/keys" "$T/packages/packages.adb" >/dev/null 2>&1 ||
 	die "the package index does not verify against keys/public-key.pem"

@@ -33,7 +33,7 @@ port adds what follows: tree patches (`tree-patches/`, applied with `git am`), n
 | First-boot Wi-Fi settings apply: both radio sections are written before any other uci-defaults script, as OpenWrt writes them. ath11k loads a minute into the first boot (after the NSS arm), so a first-boot script found no radio to configure: an install from stock with `--wifi-ssid` ended with both radios off | `overlay/.../uci-defaults/01-rd03v2-wireless` | C1 |
 | apk pins for the packages he changes without a version bump | `overlay/.../uci-defaults/95-rd03v2-apk-pins` | see [Packages](packages.md) |
 | Migration of v1.x settings | `overlay/.../uci-defaults/00-rd03v2-migrate-v1x` | see [Upgrading from v1.x](upgrading-from-v1.md) |
-| Our signing key, our repository first in `distfeeds.list` | `build.sh`, `keys/` | |
+| Our signing key; a package repository listed first in `distfeeds.list` only when the build is given `V2_REPO_URL` (otherwise no repository line, so `apk update` never warns about an unpublished one) | `build.sh`, `keys/` | |
 
 Our ath11k patches go in `patches/nss-extra/ath11k` and sort after all of his there
 (`999-999-rd03v2-*`; that directory is applied after `patches/nss`), so each can be dropped on
