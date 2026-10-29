@@ -81,6 +81,14 @@ copy_new() {  # copy_new <src> <dst relative to TREE>
 	[ -e "$TREE/$2" ] && die "overlay would overwrite his $2"
 	mkdir -p "$(dirname "$TREE/$2")"; cp -p "$1" "$TREE/$2"
 }
+# luci-theme-argon is third-party source: stage it from its pinned release
+# tarball instead of carrying a vendored copy in this repository (see
+# tools/stage-argon-v2.sh). This must happen before make: luci.mk reads po/ and
+# root/ at parse time, so a plain PKG_SOURCE download cannot provide them.
+ARGON_STAGE=$(mktemp -d "$TMPDIR/argon-stage.XXXXXX")
+"$V2/tools/stage-argon-v2.sh" "$ARGON_STAGE" "$DLDIR" || die "cannot stage luci-theme-argon"
+(cd "$ARGON_STAGE" && find . -type f -printf '%P\n') | while read -r f; do copy_new "$ARGON_STAGE/$f" "package/luci-theme-argon/$f"; done
+rm -rf "$ARGON_STAGE"
 (cd "$V2/overlay" && find . -type f -printf '%P\n') | while read -r f; do copy_new "$V2/overlay/$f" "$f"; done
 if [ -n "$($G status --porcelain)" ]; then $G add -A; $G commit -q -m "rd03v2 v2 overlay"; fi
 
