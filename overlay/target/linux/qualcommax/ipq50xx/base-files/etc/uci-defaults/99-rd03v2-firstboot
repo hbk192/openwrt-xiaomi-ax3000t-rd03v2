@@ -43,9 +43,35 @@ ap_defaults default_radio0
 ap_defaults default_radio1
 uci -q commit wireless
 
+# 3. Argon login page: the centered card instead of the classic sidebar.
+#    The theme's own first-boot script (30_luci-theme-argon, which runs earlier) writes
+#    login_style='classic' when the option is missing; on a fresh install this overwrites it.
+#    The applied marker below keeps it from undoing a choice made later in LuCI.
+if uci -q get 'argon.@global[0]' >/dev/null; then
+	uci -q set 'argon.@global[0].login_style=centered'
+	uci -q commit argon
+fi
+
+# 4. DNS: home.me is the local domain.
+#    domain=home.me gives DHCP clients that domain and makes dnsmasq append it to the names it
+#    learns from DHCP and /etc/hosts (expandhosts=1), so a client that calls itself phone
+#    resolves as phone.home.me. local=/home.me/ keeps the suffix local (no upstream forwarding).
+#    The interface_name list on the lan dhcp section is dnsmasq's --interface-name: home.me
+#    itself is answered with br-lan's addresses (IPv4 and IPv6), so it follows a later LAN
+#    address change instead of pinning today's address.
+uci -q set 'dhcp.@dnsmasq[0].domain=home.me'
+uci -q set 'dhcp.@dnsmasq[0].local=/home.me/'
+uci -q set 'dhcp.@dnsmasq[0].expandhosts=1'
+for s in $(uci -q show dhcp | sed -n 's/^dhcp\.\([^.]*\)=dhcp$/\1/p'); do
+	[ "$(uci -q get "dhcp.$s.interface")" = lan ] || continue
+	uci -q add_list "dhcp.$s.interface_name=home.me"
+	break
+done
+uci -q commit dhcp
+
 uci -q set rd03v2.firstboot='firstboot'
 uci -q set rd03v2.firstboot.applied='1'
 uci -q commit rd03v2
 
-log "applied: nss.general.wifi_offload_sta=1; APs enabled with SSID MiNet_OpWrt"
+log "applied: nss.general.wifi_offload_sta=1; APs enabled with SSID MiNet_OpWrt; argon login centered; DNS domain home.me"
 exit 0

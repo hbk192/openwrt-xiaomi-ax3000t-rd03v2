@@ -13,6 +13,10 @@
 # paths and defaults). When the phys appear, `wifi config` finds a wifi-device on each path and
 # adds nothing. A configuration that already has a wifi-device (any sysupgrade that kept the
 # settings) is left alone.
+#
+# Defaults this firmware ships: 802.11ax on both bands (htmode HE, which is what encodes the
+# mode), 20 MHz on 2.4 GHz and 80 MHz on 5 GHz, and channel auto (ACS) on both. mac80211.uc
+# itself would pin the board's default_channel instead of auto; the widths are its defaults.
 . /lib/functions.sh
 
 [ "$(board_name)" = xiaomi,mi-router-ax3000t-v2 ] || exit 0
@@ -24,7 +28,7 @@ set wireless.radio0=wifi-device
 set wireless.radio0.type='mac80211'
 set wireless.radio0.path='platform/soc@0/c000000.wifi'
 set wireless.radio0.band='2g'
-set wireless.radio0.channel='1'
+set wireless.radio0.channel='auto'
 set wireless.radio0.htmode='HE20'
 set wireless.default_radio0=wifi-iface
 set wireless.default_radio0.device='radio0'
@@ -37,7 +41,7 @@ set wireless.radio1=wifi-device
 set wireless.radio1.type='mac80211'
 set wireless.radio1.path='platform/soc@0/b00a040.wifi'
 set wireless.radio1.band='5g'
-set wireless.radio1.channel='36'
+set wireless.radio1.channel='auto'
 set wireless.radio1.htmode='HE80'
 set wireless.default_radio1=wifi-iface
 set wireless.default_radio1.device='radio1'
