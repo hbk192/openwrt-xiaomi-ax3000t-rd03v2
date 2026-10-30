@@ -21,14 +21,10 @@
 
 log() { logger -t rd03v2-firstboot "$*"; }
 
-# 1. Keep the NSS Wi-Fi offload while a station (travelmate client) interface is configured.
-#    /lib/nss/functions.sh nss_dwmac_wifi_offload() otherwise puts Wi-Fi on the host path as
-#    soon as a station interface exists: under NSS Wi-Fi offload an IPQ5018/QCN6122 station
-#    cannot send frames larger than ~860 B, so TCP uploads stall (#48). This option overrides
-#    that and keeps the offload; ath11k loads once per boot, so it takes effect at the next
-#    boot, which is fine here - the script runs before /etc/init.d/nss (START=19).
-uci -q set nss.general.wifi_offload_sta='1'
-uci -q commit nss
+# 1. A station (client) interface keeps Wi-Fi on the NSS path: tree patch 0008 made that the
+#    default (an ipq50xx station sends full-size frames on the NSS path, #48 no longer
+#    reproduces), with nss.general.wifi_offload_sta='0' as the host-path escape hatch. No
+#    override is written here, so a device without the option keeps the default.
 
 # 2. Both APs up by default, WPA2/PSK, one SSID and key.
 #    'psk2' is WPA2-PSK with CCMP/AES; a passphrase is 8..63 characters.
@@ -73,5 +69,5 @@ uci -q set rd03v2.firstboot='firstboot'
 uci -q set rd03v2.firstboot.applied='1'
 uci -q commit rd03v2
 
-log "applied: nss.general.wifi_offload_sta=1; APs enabled with SSID MiNet_OpWrt; argon login centered; DNS domain home.me"
+log "applied: APs enabled with SSID MiNet_OpWrt; argon login centered; DNS domain home.me"
 exit 0

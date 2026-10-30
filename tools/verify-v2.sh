@@ -116,10 +116,29 @@ if [ -f "$X/etc/rd03v2-release" ] && [ -f "$X/lib/apk/db/installed" ]; then
 		"$(grep -cF 'stats_disable_default=0' "$X/etc/init.d/qca-nss-pbuf")" 1
 	chk "statistics policy preserves explicit UCI override" \
 		"$(grep -cF 'config_get stats_disable opt stats_disable "$stats_disable_default"' "$X/etc/init.d/qca-nss-pbuf")" 1
-	# a station interface keeps Wi-Fi on the host path (0008, #48): one decision for the
-	# service and nss-dwmac-up
-	chk "station keeps Wi-Fi on the host path (0008)" \
+	# one Wi-Fi path decision for the service and nss-dwmac-up (0008): a station stays on
+	# the NSS path; nss.general.wifi_offload_sta=0 keeps Wi-Fi on the host path (#48 escape hatch)
+	chk "one Wi-Fi path decision for the service and nss-dwmac-up (0008)" \
 		"$(grep -lF 'nss_dwmac_wifi_offload' "$X/lib/nss/functions.sh" "$X/etc/init.d/nss" "$X/usr/sbin/nss-dwmac-up" 2>/dev/null | wc -l)" 3
+	# run the image's helper against a stub uci: one station configured, wifi_offload on,
+	# wifi_offload_sta unset / on / off in each spelling
+	cat > "$W/sta-opt.sh" <<'EOS'
+. "$1"
+uci() {
+	case "$*" in
+	'-q get nss.general.wifi_offload') echo 1 ;;
+	'-q get nss.general.wifi_offload_sta') [ -n "$V" ] && echo "$V" || return 1 ;;
+	'-q -X show wireless') echo "wireless.s1.mode='sta'" ;;
+	'-q get wireless.s1.device') echo radio1 ;;
+	*) return 1 ;;
+	esac
+}
+r=''
+for V in '' 1 yes 0 no off false disabled; do nss_dwmac_wifi_offload; r="$r$NSS_WIFI_OFFLOAD"; done
+echo "$r"
+EOS
+	chk "a station stays on the NSS path unless wifi_offload_sta is off, in any spelling (0008)" \
+		"$(sh "$W/sta-opt.sh" "$X/lib/nss/functions.sh" 2>&1)" 11100000
 	chk "NSS script syntax" \
 		"$(yes_ sh -c 'for f; do sh -n "$f" || exit 1; done' _ "$X/lib/nss/functions.sh" "$X/etc/init.d/nss" "$X/usr/sbin/nss-dwmac-up" "$X/usr/sbin/nss-status")" yes
 	# PTK0 rekey becomes a reconnect by default, AP and station (0009, #49)
