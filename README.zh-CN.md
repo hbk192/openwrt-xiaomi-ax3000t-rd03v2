@@ -97,29 +97,37 @@ v1.x 系列（内核 6.12，v1.0 到 v1.14）在 `v1` 分支上，已停止开�
 
 ## 本 fork 的修改
 
-相对上游 `main`（`85d91d8`，v2.0.2），本 fork 目前 ahead 19 个提交。除下面列出的内容外，上游行为不变：
+相对上游 `main`（`85d91d8`，v2.0.2），本 fork 领先 20 个提交、落后 14 个；**不 merge/rebase 上游**，只按内容取用。
+下面按主题摘要（逐条历史见 `git log`）：
 
-| # | 提交 | 内容 |
-|---|---|---|
-| 1 | `keys: sign builds with our own EC key` | 用自己的 EC 密钥签名构建产物与软件包仓库；`keys/public-key.pem` 公开、私钥不入库 |
-| 2 | `config: DEV-pkgs package set` | 内置包单：zh-CN 界面、Argon v3.1.1、`curl`/`bash`/`unzip`/`openssh-sftp-server`、`luci-app-ttyd`/`statistics`/`travelmate`/`filemanager`、zram-swap |
-| 3 | `config: enable zh-CN ...` | 打开 `CONFIG_LUCI_LANG_zh_Hans`（i18n 包是被隐藏的 kconfig 符号），并在 `image-must-have` 里断言中文包确实进镜像 |
-| 4 | `overlay: first-boot defaults` | 首启默认值：双频 AP 开启（WPA2/PSK，SSID `MiNet_OpWrt`）、首启标记 `/etc/config/rd03v2`（当时写入的 `wifi_offload_sta=1` 已在第 16 条中移除） |
-| 5 | `v2: move to kuncy7 ipq50xx-2026.10.28` | bump 到 10.28 发布：`upstream.lock` + `feeds.lock`、0008 补丁重做、删掉上游已合并的 0010/0011 |
-| 6 | `v2: 10.28 patch maintenance` | 999-972 的 reviewed-fuzz 维护；我们的 #984 因上游 999-997 已实现同样功能而删除 |
-| 7 | `v2: re-baseline the 10.28 memory checks` | `tools/check-host-rx.py` 语义按 10.28 的实际含义重写（15 项检查） |
-| 8 | `docs: what-this-port-adds` | 记录本次 bump 相对上游移动了哪些补丁与 overlay 内容 |
-| 9 | `build: stage luci-theme-argon ...` | Argon 主题源码**不放进仓库**：构建时由 `tools/stage-argon-v2.sh` 从 pin 住的 release tarball（sha256 校验、缓存在 `dl-v2`）现拼进构建树 |
-| 10 | `libubox: install the SIGCHLD handler with SA_RESTART` | 进程页面空白的修复（EINTR/SIGCHLD，见 `13-进程页面空白-EINTR与SIGCHLD.md`） |
-| 11 | `build: list a package repository only when one is published` | 未发布包仓库时不在镜像里列自己的仓库 URL，避免 `apk update` 报 404 |
-| 12 | `firstboot: centered Argon login, AX radios on auto channels, home.me DNS` | 首启 Argon 居中登录、AX 射频自动信道、`home.me` 本地域名 |
-| 13 | `wifi: NSS 256M datapath fixes from upstream v2.1.0/v2.1.1` | 合入 984/988/989/990/991/992 + ECM 9001；965 说明更新（见上文「已合入上游修复」） |
-| 14 | `watchdog: reboot instead of reloading ath11k under NSS Wi-Fi offload` | NSS 卸载下 watchdog 不再 reload，直接重启；`tools/test-watchdog.sh` 同步新行为 |
-| 15 | `hostapd: deauthenticate stations kept across an apsta restart (#54)` | tree patch 0012 |
-| 16 | `nss-tools: keep a station on the NSS path, host path on request (#48)` | 0008 按 10.28 树重写；首启不再写 `wifi_offload_sta=1`；verify 改为拼写功能测试 |
-| 17 | `tools: check the v2.1.x datapath patches and the base move` | check-host-rx 增 244a/988/984/990/991/992；verify 增 0012、subsys/ECM、0010-0011 来源护栏、mac80211 每次 scratch 重套 |
-| 18 | `docs: sync upstream v2.1.1 bug research (README, VALIDATION, port table)` | 同步上游 README / VALIDATION / `docs/what-this-port-adds.md`（`b62ba92` 原文）并更新本文档 |
-| 19 | `v2: v1.x migration: drop only qca-nss-ecm from 10_disable_services, log to a file (#51)` | v1.x 配置迁移只摘 `qca-nss-ecm` 一行（保留用户禁用过的服务）、动作写 `/etc/rd03v2-migrate.log`（keep.d 保留）、`tools/test-migrate-v1x.py` 8 个场景、verify 双环境跑 |
+### 基座、补丁与迁移
+
+- **基座**：bump 到 kuncy7 的 `ipq50xx-2026.10.28`，`upstream.lock` / `feeds.lock` 一起钉住；随之删掉上游已合并的 tree patch 0010/0011，
+  0008 按 10.28 的树重写，999-972 走 `mac80211-fuzz-reviewed.txt` 的 reviewed-fuzz 维护，自带的 #984 因上游 999-997 已实现同样功能而删除。
+- **Wi-Fi / NSS 数据通路**：合入上游 v2.1.0/v2.1.1 的修复——984/988/989/990/991/992 与 ECM 9001（对应 #52、#53、#54、#55、#48 及 CE RX
+  片段缓存/加锁），965 的说明同步更新；hostapd tree patch 0012（apsta 重启时去认证旧客户端，#54）；NSS Wi-Fi 卸载下 watchdog
+  改为重启，而不是 reload ath11k。
+- **v1.x 迁移（#51）**：`10_disable_services` 只摘 `qca-nss-ecm` 一行，保留用户禁用过的其他服务；动作写入 `/etc/rd03v2-migrate.log`
+  （由 keep.d 保留），`tools/test-migrate-v1x.py` 跑 8 个场景，verify 在宿主机与镜像 BusyBox 两边都跑。
+
+### 镜像内容、签名与默认值
+
+- **包单**：zh-CN 界面（`CONFIG_LUCI_LANG_zh_Hans`，并在 `image-must-have` 里断言中文包确实进镜像）、Argon v3.1.1（见补充说明）、
+  `luci-app-ttyd`/`statistics`/`travelmate`/`filemanager`、`curl`/`bash`/`unzip`/`openssh-sftp-server`、zram-swap；
+  AmneziaWG / WireGuard / SQM 编成 `=m`，随签名的本地包仓库发布。
+- **签名与仓库**：用本 fork 的 EC 密钥签名构建产物与包仓库（`keys/public-key.pem` 公开，私钥不入库）；没有发布包仓库时，
+  镜像里不列自己的仓库 URL（避免 `apk update` 报 404）。
+- **首启默认值**：双频 AP 默认开启（WPA2/PSK，SSID `MiNet_OpWrt`）、Argon 居中登录页、AX 射频自动信道、`home.me` 本地域名；
+  首启标记写在 `/etc/config/rd03v2`。station 默认留在 NSS 通路，因此不再写 `wifi_offload_sta=1`（需要 host 通路时设 `wifi_offload_sta=0`）。
+- **发布卫生**：`mkrelease-v2.sh` 的发布物不带构建机路径——`feeds.buildinfo` 的 NSS 源换成 `upstream.lock` 的 `NSS_URL`（pin 所在的
+  fork tag 下），删掉 `config.buildinfo` 的 `CONFIG_CCACHE_DIR`，并对发布文本资产加 `/home|/root|/tmp` 护栏。
+
+### 修复与工具
+
+- **进程页空白**：libubox 的 SIGCHLD handler 改为 `SA_RESTART`（EINTR/SIGCHLD，记录见工作区文档 `13-进程页面空白-EINTR与SIGCHLD.md`）。
+- **验证工具**：`tools/verify-v2.sh` 增加 0012、mac80211 core/ECM 指纹、json-c/libffi 来源护栏、mac80211 每次在 scratch 里无 fuzz
+  重套、迁移测试；`tools/check-host-rx.py` 按 10.28 的语义重写（15 项检查）；`tools/test-watchdog.sh` 覆盖 46 个场景。
+- **文档**：`README.md`、`VALIDATION.md`、`docs/what-this-port-adds.md` 同步到上游 v2.1.1（`b62ba92`）原文；本文件为中文说明。
 
 补充说明：
 
@@ -129,4 +137,5 @@ v1.x 系列（内核 6.12，v1.0 到 v1.14）在 `v1` 分支上，已停止开�
 - 构建方式与上游一致（`build.sh` + `tools/finish-build-v2.sh`），差异只在包单、签名密钥、首启默认值与 Argon 的 stage 步骤。
 - **上游文档**：`README.md`、`VALIDATION.md`、`docs/what-this-port-adds.md` 已同步到上游 v2.1.1（`b62ba92`）的原文；
   英文 README/VALIDATION 保留上游写法（基座与发布流程以上游为准），本 fork 的差异见本文件与 README 头部的说明。
-- **未采纳的上游改动**：`50687ae`（发布 buildinfo 去构建机路径，等本 fork 真要发布 release 时再合）；`afcb4e2`（#51）已并入（见第 19 条）。
+- **未采纳的上游改动**：`CONFIG_KERNEL_DEBUG_INFO`（镜像不变，只是构建树保留 DWARF；本 fork 不留构建树、设备侧也没有 crash dump
+  管道，暂不采纳——将来做 crash 分析时要和“构建后归档 vmlinux”一起做）。#51 与 `50687ae` 已并入，见上面两节。
