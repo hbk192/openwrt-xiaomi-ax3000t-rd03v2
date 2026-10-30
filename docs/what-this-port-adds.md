@@ -38,7 +38,7 @@ port adds what follows: tree patches (`tree-patches/`, applied with `git am`), n
 | hostapd sends the first 4-way handshake message 8 times (`wpa_pairwise_update_count=8` on every AP interface, once). NSS holds a radio's RX for a few seconds after an in-place recovery; without it 7 of 22 rejoins failed the handshake and backed off 10 s, with it 0 of 22 | `overlay/.../uci-defaults/97-rd03v2-four-way-retries` | v1.x, #25; C9 |
 | First-boot Wi-Fi settings apply: both radio sections are written before any other uci-defaults script, as OpenWrt writes them. ath11k loads a minute into the first boot (after the NSS arm), so a first-boot script found no radio to configure: an install from stock with `--wifi-ssid` ended with both radios off | `overlay/.../uci-defaults/01-rd03v2-wireless` | C1 |
 | apk pins for the packages he changes without a version bump | `overlay/.../uci-defaults/95-rd03v2-apk-pins` | see [Packages](packages.md) |
-| Migration of v1.x settings; what it did goes to `/etc/rd03v2-migrate.log` (from v2.1.1; **not carried in this fork**, see [README.zh-CN.md](../README.zh-CN.md)) | `overlay/.../uci-defaults/00-rd03v2-migrate-v1x`, `tools/test-migrate-v1x.py` | see [Upgrading from v1.x](upgrading-from-v1.md), #51 |
+| Migration of v1.x settings; what it did goes to `/etc/rd03v2-migrate.log` (from v2.1.1) | `overlay/.../uci-defaults/00-rd03v2-migrate-v1x`, `tools/test-migrate-v1x.py` | see [Upgrading from v1.x](upgrading-from-v1.md), #51 |
 | Our signing key, our repository first in `distfeeds.list` | `build.sh`, `keys/` | |
 
 Our ath11k patches go in `patches/nss-extra/ath11k` and sort after all of his there

@@ -1,13 +1,15 @@
 # OpenWrt for Xiaomi AX3000T (RD03v2)
 
 > **Personal fork of [ADCDS/openwrt-xiaomi-ax3000t-rd03v2](https://github.com/ADCDS/openwrt-xiaomi-ax3000t-rd03v2).**
-> It keeps the upstream tree and adds, on top of `main` (ahead 18 commits; full list in the Chinese README):
+> It keeps the upstream tree and adds, on top of `main` (ahead 19 commits; full list in the Chinese README):
 >
 > - bumped the pinned base to `kuncy7/openwrt-nss-edma` `ipq50xx-2026.10.28` (both locks, tree patches, feeds)
 > - merged upstream's v2.1.0/v2.1.1 fixes: the REO fragment-ring wedge (#53), the Wi-Fi firmware
 >   assert on routed UDP (#52), hostapd deauth after an apsta restart (#54), the fragment
 >   double-free (#55), the NSS Wi-Fi watchdog that reboots instead of reloading ath11k, a station
->   on the NSS path with a host-path opt-out (#48), and the CE RX fragment-cache/locking patches
+>   on the NSS path with a host-path opt-out (#48), the CE RX fragment-cache/locking patches, and
+>   the #51 v1.x-migration fix (only the `qca-nss-ecm` line leaves `10_disable_services`, its
+>   actions go to `/etc/rd03v2-migrate.log`)
 > - a custom package set in the image: zh-CN UI, Argon v3.1.1 (staged from its release tarball at build time,
 >   no third-party source in this repository), daily tools, zram-swap
 > - first-boot defaults: both APs on (WPA2/PSK), a WISP client keeps NSS offload (tree patch 0008's
@@ -19,7 +21,7 @@
 >
 > Upstream README follows, verbatim from v2.1.1 (`b62ba92`); it describes upstream's base and
 > release flow. This fork's base, build, first-boot defaults and package set differ as above; the
-> Chinese README has the per-commit list. #51's v1.x-migration change is not part of this fork.
+> Chinese README has the per-commit list.
 
 OpenWrt for the **RD03v2 hardware revision** of the Xiaomi AX3000T: Qualcomm IPQ5018 with a
 QCN6122 5 GHz radio, 256 MB RAM and 128 MB NAND. It installs permanently on NAND and

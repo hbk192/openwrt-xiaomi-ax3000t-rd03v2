@@ -4,8 +4,7 @@
 > [ADCDS/openwrt-xiaomi-ax3000t-rd03v2](https://github.com/ADCDS/openwrt-xiaomi-ax3000t-rd03v2)
 > at `b62ba92` (v2.1.1). It was written on upstream's base (`c3po-c36db6321c`, frozen feeds);
 > this fork pins kuncy7's `ipq50xx-2026.10.28` with its own build, package set and signed
-> repository — see [README.zh-CN.md](README.zh-CN.md). #51's v1.x-migration change is not
-> carried by this fork.
+> repository — see [README.zh-CN.md](README.zh-CN.md).
 
 What v2.0.0 to v2.1.1 were tested on before release, and what they were not. Everything
 here ran on one Xiaomi AX3000T (RD03v2, 256 MB), installed on NAND, with:

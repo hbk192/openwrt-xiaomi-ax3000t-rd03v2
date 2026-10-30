@@ -6,7 +6,8 @@
 > - 把上游基底 bump 到 `kuncy7/openwrt-nss-edma` 的 `ipq50xx-2026.10.28`（两个 lock、树补丁、feeds 一起钉住）
 > - **已合入上游 v2.1.0/v2.1.1 的修复**：REO 片段环卡死（#53）、host 模式路由 UDP 触发固件 assert（#52）、
 >   apsta 重启后客户端假关联（#54）、host 模式片段 double-free（#55）、NSS 卸载下 watchdog 改为重启而不是 reload、
->   station 默认留在 NSS 通路并可用 `wifi_offload_sta=0` 逃生（#48），以及 CE RX 片段缓存/加锁补丁
+>   station 默认留在 NSS 通路并可用 `wifi_offload_sta=0` 逃生（#48）、CE RX 片段缓存/加锁补丁，
+>   以及 v1.x 配置迁移只摘 `qca-nss-ecm` 并把动作写入 `/etc/rd03v2-migrate.log`（#51）
 > - 镜像内置自定义包单：中文界面（zh-CN）、Argon v3.1.1 主题（**构建期从 release tarball 现拼，仓库不含第三方源码**）、常用工具、zram-swap
 > - 首启默认值：双频 AP 默认开启（WPA2/PSK）、WISP/中继客户端默认走 NSS 卸载（tree patch 0008 的默认；
 >   需要 host 通路时设 `nss.general.wifi_offload_sta=0`）、首启标记写在 `/etc/config/rd03v2`
@@ -96,7 +97,7 @@ v1.x 系列（内核 6.12，v1.0 到 v1.14）在 `v1` 分支上，已停止开�
 
 ## 本 fork 的修改
 
-相对上游 `main`（`85d91d8`，v2.0.2），本 fork 目前 ahead 18 个提交。除下面列出的内容外，上游行为不变：
+相对上游 `main`（`85d91d8`，v2.0.2），本 fork 目前 ahead 19 个提交。除下面列出的内容外，上游行为不变：
 
 | # | 提交 | 内容 |
 |---|---|---|
@@ -118,6 +119,7 @@ v1.x 系列（内核 6.12，v1.0 到 v1.14）在 `v1` 分支上，已停止开�
 | 16 | `nss-tools: keep a station on the NSS path, host path on request (#48)` | 0008 按 10.28 树重写；首启不再写 `wifi_offload_sta=1`；verify 改为拼写功能测试 |
 | 17 | `tools: check the v2.1.x datapath patches and the base move` | check-host-rx 增 244a/988/984/990/991/992；verify 增 0012、subsys/ECM、0010-0011 来源护栏、mac80211 每次 scratch 重套 |
 | 18 | `docs: sync upstream v2.1.1 bug research (README, VALIDATION, port table)` | 同步上游 README / VALIDATION / `docs/what-this-port-adds.md`（`b62ba92` 原文）并更新本文档 |
+| 19 | `v2: v1.x migration: drop only qca-nss-ecm from 10_disable_services, log to a file (#51)` | v1.x 配置迁移只摘 `qca-nss-ecm` 一行（保留用户禁用过的服务）、动作写 `/etc/rd03v2-migrate.log`（keep.d 保留）、`tools/test-migrate-v1x.py` 8 个场景、verify 双环境跑 |
 
 补充说明：
 
@@ -127,5 +129,4 @@ v1.x 系列（内核 6.12，v1.0 到 v1.14）在 `v1` 分支上，已停止开�
 - 构建方式与上游一致（`build.sh` + `tools/finish-build-v2.sh`），差异只在包单、签名密钥、首启默认值与 Argon 的 stage 步骤。
 - **上游文档**：`README.md`、`VALIDATION.md`、`docs/what-this-port-adds.md` 已同步到上游 v2.1.1（`b62ba92`）的原文；
   英文 README/VALIDATION 保留上游写法（基座与发布流程以上游为准），本 fork 的差异见本文件与 README 头部的说明。
-- **未采纳的上游改动**：`50687ae`（发布 buildinfo 去构建机路径，等本 fork 真要发布 release 时再合）与 `afcb4e2`（#51 v1.x 迁移，
-  只影响 v1.x 配置升级）；因此 `docs/upgrading-from-v1.md` 仍是上游 v2.0.2 的旧版说明。
+- **未采纳的上游改动**：`50687ae`（发布 buildinfo 去构建机路径，等本 fork 真要发布 release 时再合）；`afcb4e2`（#51）已并入（见第 19 条）。
