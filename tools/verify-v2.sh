@@ -35,6 +35,20 @@ for p in "$V2"/tree-patches/*.patch; do
 		sed 's/^Subject: \[PATCH[^]]*\] //')
 	chk "tree patch applied: $s" "$(grep -cxF "$s" <<<"$applied")" 1
 done
+# json-c object-cleanup fixes (#50) and libffi in the core tree: OpenWrt's 102f4eebca and
+# 9b835ec626, in his tree since his merge of OpenWrt main of 2026-10-21 (715267912c); our
+# former tree patches 0010 and 0011, kept as checks that his tree still provides them (blob ids
+# pinned, so an upstream change fails here for review)
+chk "his tree: json-c 003 user-delete fix (former 0010)" \
+	"$(git -C "$TREE" rev-parse "$COMMIT:package/libs/libjson-c/patches/003-clear-user-delete-after-calling-it.patch" 2>/dev/null)" \
+	550294e16ac0136c5ad47ccedef7fcb787efa895
+chk "his tree: json-c 004 userdata cleanup fix (former 0010)" \
+	"$(git -C "$TREE" rev-parse "$COMMIT:package/libs/libjson-c/patches/004-clear-userdata-during-object-cleanup.patch" 2>/dev/null)" \
+	8698b3eb5e0e3f09ff0f56ea2b649aa4d57bc0db
+chk "his tree: libffi in the core tree (former 0011)" \
+	"$(git -C "$TREE" rev-parse "$COMMIT:package/libs/libffi/Makefile" 2>/dev/null)" \
+	3a13f71c028bb4bdeff52b10c8a8b5f25aec85e6
+chk "libffi comes from the core tree only" "$(ls -d "$TREE"/package/feeds/*/libffi 2>/dev/null | wc -l)" 0
 grep -vE '^\s*(#|$)' "$V2/feeds.lock" | while read -r name rev; do
 	[ "$(git -C "$TREE/feeds/$name" rev-parse HEAD 2>/dev/null)" = "$rev" ] && echo "PASS feed $name" || echo "FAIL feed $name"
 done > "$W/feeds"; cat "$W/feeds"; fail=$((fail + $(grep -c '^FAIL' "$W/feeds")))
@@ -46,6 +60,8 @@ for c in CONFIG_ATH11K_MEM_PROFILE_256M=y CONFIG_NSS_MEM_PROFILE_LOW=y CONFIG_AT
 	CONFIG_NSS_FIRMWARE_VERSION_12_5=y; do
 	chk "$c" "$(grep -cxF "$c" "$TREE/.config")" 1
 done
+chk "libffi staged for the target python3 (former 0011)" \
+	"$(ls "$TREE"/staging_dir/target-*/usr/include/ffi.h 2>/dev/null | wc -l)" 1
 LX=$(ls -d "$TREE"/build_dir/target-*/linux-qualcommax_ipq50xx/linux-[0-9]* 2>/dev/null | head -1)
 KC=$LX/.config
 if [ -f "$KC" ]; then
@@ -112,6 +128,11 @@ if [ -f "$X/etc/rd03v2-release" ] && [ -f "$X/lib/apk/db/installed" ]; then
 	# tree patch 0007)
 	chk "nss-dwmac-up retries a radio left down" \
 		"$(grep -cF 'asking netifd to set it up again' "$X/usr/sbin/nss-dwmac-up")" 1
+	# the image's json-c carries the #50 fixes (0.19-r3 or later; former tree patch 0010)
+	jc=$(sed -n 's/^libjson-c5 - //p' "$M")
+	case "$("$TREE/staging_dir/host/bin/apk" version -t "${jc:-0}" 0.19-r3 2>/dev/null)" in
+	'>'|'=') jc_ok=yes ;; *) jc_ok=no ;; esac
+	chk "image libjson-c5 $jc is 0.19-r3 or later (former 0010)" "$jc_ok" yes
 	chk "RD03v2 keeps basic station statistics by default (0005)" \
 		"$(grep -cF 'stats_disable_default=0' "$X/etc/init.d/qca-nss-pbuf")" 1
 	chk "statistics policy preserves explicit UCI override" \
@@ -147,6 +168,10 @@ EOS
 			"$X/usr/share/schema/wireless.wifi-iface.json" 2>/dev/null)" 1
 	chk "wpa_deny_ptk0_rekey reaches hostapd and wpa_supplicant" \
 		"$(grep -lF "wpa_deny_ptk0_rekey" "$X/usr/share/ucode/wifi/ap.uc" "$X/usr/share/ucode/wifi/supplicant.uc" 2>/dev/null | wc -l)" 2
+	# an AP that apsta_state stopped for a lost station link deauthenticates its BSSes'
+	# stations when it starts again (0012, #54)
+	chk "apsta restart deauthenticates the stations hostapd kept (0012)" \
+		"$(grep -cF 'iface_flush_stations(phy, config);' "$X/usr/share/hostap/hostapd.uc")$(grep -cF 'DEAUTHENTICATE ff:ff:ff:ff:ff:ff reason=2' "$X/usr/share/hostap/hostapd.uc")" 11
 	chk "early Q6 policy service" "$(yes_ test -L "$X/etc/rc.d/S18rd03v2-q6")" yes
 	chk "early RAM installer service" "$(yes_ test -L "$X/etc/rc.d/S17rd03v2-installer")" yes
 	# first-boot scripts
@@ -207,11 +232,12 @@ fp() {  # fp <patch> <source dir>
 	l=$(grep -E '^\+[^+]' "$1" | cut -c2- | awk '{ if (length($0) > length(best)) best = $0 } END { print best }')
 	[ -n "$l" ] && grep -rqF -- "$l" "$2" && echo yes || echo no
 }
-BP=$(ls -d "$TREE"/build_dir/target-*/linux-qualcommax_ipq50xx/backports-[0-9]* 2>/dev/null | head -1)
+# Always re-apply the series, strictly, in scratch: the package build directory is gone after
+# compiling (his CI config sets AUTOREMOVE), and a prepared one may hold local extra patches.
+# That the series went into the build shows in the shipped ath11k.ko (the 964 immediates
+# above), since a patch that fails stops the build.
+BP=""
 if [ -z "$BP" ]; then
-	# His CI config sets AUTOREMOVE, which deletes package build directories after compiling.
-	# Re-apply the series instead, strictly; that it went into the build shows in the shipped
-	# ath11k.ko (the 964 immediates above), since a patch that fails stops the build.
 	if "$V2/tools/check-mac80211-series.sh" "$TREE" "$W/mac80211" > "$W/mac80211.log" 2>&1; then
 		BP=$W/mac80211/src
 		echo "INFO mac80211: build directory removed (AUTOREMOVE); $(tail -1 "$W/mac80211.log" | cut -d';' -f1)"
@@ -229,6 +255,24 @@ for p in "$OV"/package/kernel/mac80211/patches/nss/ath11k/*.patch "$OV"/package/
 	chk "mac80211 $(basename "$p")" "$([ -n "$BP" ] && fp "$p" "$BP/drivers/net/wireless/ath/ath11k" || echo no)" yes
 done
 chk "our ath11k patches found in the overlay" "$([ "$n_ath" -gt 0 ] && echo yes || echo none)" yes
+# our mac80211 core patches (patches/nss-extra/subsys, applied before nss-extra/ath11k)
+for p in "$OV"/package/kernel/mac80211/patches/nss-extra/subsys/*.patch; do
+	[ -e "$p" ] || continue
+	chk "mac80211 $(basename "$p")" "$([ -n "$BP" ] && fp "$p" "$BP/net/mac80211" || echo no)" yes
+done
+# our ECM patches (feed-overlay/nss/qca-nss-ecm/patches). With the build directory gone
+# (AUTOREMOVE), the feed check above already proves each one sits in the feed's patches
+# directory, so the package build applied it: a patch that fails stops the build.
+EC=$(ls -d "$TREE"/build_dir/target-*/linux-qualcommax_ipq50xx/qca-nss-ecm-* 2>/dev/null | head -1)
+for p in "$V2"/feed-overlay/nss/qca-nss-ecm/patches/*.patch; do
+	[ -e "$p" ] || continue
+	if [ -n "$EC" ] && [ -d "$EC/frontends" ]; then
+		chk "ecm $(basename "$p")" "$(fp "$p" "$EC/frontends")" yes
+	else
+		chk "ecm $(basename "$p") is in the prepared feed" \
+			"$(yes_ cmp -s "$p" "$TREE/feeds/nss/qca-nss-ecm/patches/$(basename "$p")")" yes
+	fi
+done
 for p in "$OV"/target/linux/qualcommax/patches-6.18/*.patch; do
 	[ -e "$p" ] || continue
 	chk "kernel $(basename "$p")" "$([ -n "$LX" ] && fp "$p" "$LX/drivers" || echo no)" yes
